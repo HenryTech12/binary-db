@@ -115,6 +115,7 @@ public:
             // 3. Write Username
             string username = user->getUsername();
             size_t username_len = username.size();
+            
             //Write string size
             outdb_file.write(reinterpret_cast<const char*>(&username_len), sizeof(username_len));
             outdb_file.write(username.data(),username_len);
