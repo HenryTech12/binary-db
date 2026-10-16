@@ -103,10 +103,16 @@ public:
         if (outdb_file.is_open()) {
             // 1. Write ID
             int id = user->getId();
+            if (id < 0) {
+                throw "invalid id";
+            }
             outdb_file.write(reinterpret_cast<const char*>(&id), sizeof(id));
 
             // 2. Write Name
             string name = user->getName();
+            if (name.empty()) {
+                throw "name is empty";
+            }
             size_t name_len = name.size();
             //Write string size
             outdb_file.write(reinterpret_cast<const char*>(&name_len), sizeof(name_len));
@@ -114,14 +120,20 @@ public:
 
             // 3. Write Username
             string username = user->getUsername();
+            if (username.empty()) {
+                throw "username is empty";
+            }
             size_t username_len = username.size();
-            
+
             //Write string size
             outdb_file.write(reinterpret_cast<const char*>(&username_len), sizeof(username_len));
             outdb_file.write(username.data(),username_len);
 
             //4. Write Password
             string password = user->getPassword();
+            if (password.empty()) {
+                throw "password is empty";
+            }
             size_t password_len = password.size();
             //Write string size
             outdb_file.write(reinterpret_cast<const char*>(&password_len), sizeof(password_len));
@@ -129,6 +141,9 @@ public:
 
             //5. Write Age
             int age = user->getAge();
+            if (age < 0) {
+                throw "invalid age";
+            }
             outdb_file.write(reinterpret_cast<const char*>(&age), sizeof(age));
 
             cout << "Data saved to database." << endl;
