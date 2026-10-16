@@ -9,7 +9,7 @@ template <typename T>
 class IDatabase {
 public:
     virtual ~IDatabase() = default;
-    virtual void addData() = 0;
+    virtual void addData(shared_ptr<T>& users) = 0;
     virtual T getDataByID(int id) = 0;
     virtual T getDataByUsername(string username) = 0;
     virtual vector<T> getAll() = 0;
@@ -91,23 +91,28 @@ template <typename T>
 class Database : public IDatabase<T> {
 private:
     string db_name = "data.db"; //default db name
-    shared_ptr<Users> user;
+    vector<Users> users;
 public:
-    Database(shared_ptr<Users>& user) {
-        this->user = user;
+    Database() {
     }
     ~Database() {
         cout << "LOG: Database object is destroyed" << endl;
     }
-    void addData() override {
+    void addData(shared_ptr<T>& user) override {
         ofstream outdb_file(db_name, ios::binary | ios::app);
         if (outdb_file.is_open()) {
             // 1. Write ID
             int id = user->getId();
+            if (id < 0) {
+                throw "invalid id";
+            }
             outdb_file.write(reinterpret_cast<const char*>(&id), sizeof(id));
 
             // 2. Write Name
             string name = user->getName();
+            if (name.empty()) {
+                throw "name is empty";
+            }
             size_t name_len = name.size();
             //Write string size
             outdb_file.write(reinterpret_cast<const char*>(&name_len), sizeof(name_len));
@@ -115,13 +120,20 @@ public:
 
             // 3. Write Username
             string username = user->getUsername();
+            if (username.empty()) {
+                throw "username is empty";
+            }
             size_t username_len = username.size();
+
             //Write string size
             outdb_file.write(reinterpret_cast<const char*>(&username_len), sizeof(username_len));
             outdb_file.write(username.data(),username_len);
 
             //4. Write Password
             string password = user->getPassword();
+            if (password.empty()) {
+                throw "password is empty";
+            }
             size_t password_len = password.size();
             //Write string size
             outdb_file.write(reinterpret_cast<const char*>(&password_len), sizeof(password_len));
@@ -129,6 +141,9 @@ public:
 
             //5. Write Age
             int age = user->getAge();
+            if (age < 0) {
+                throw "invalid age";
+            }
             outdb_file.write(reinterpret_cast<const char*>(&age), sizeof(age));
 
             cout << "Data saved to database." << endl;
@@ -139,110 +154,32 @@ public:
         outdb_file.close();
     }
 
+
     T getDataByID(int id) override {
-        Users user;
-        ifstream indb_file(db_name, ios::binary);
-        if (!indb_file.is_open()) {
-             throw "Cannot open database file";
+        Users u = extractData('i',id,"");
+        if (u.getName().empty()) {
+            string str_error = "Data not found with id :";
+            str_error.append(to_string(id));
+            throw str_error;
         }
-
-        //READ ID
-        int my_id = 0;
-        while (indb_file.read(reinterpret_cast<char*>(&my_id), sizeof(my_id))) {
-
-            //1. READ NAME
-            //READ STRING SIZE
-            size_t name_len = 0;
-            indb_file.read(reinterpret_cast<char*>(&name_len), sizeof(name_len));
-            string name(name_len,'\0');
-            indb_file.read(&name[0], name_len);
-
-            //2. READ USERNAME
-            //READ STRING SIZE
-            size_t username_len = 0;
-            indb_file.read(reinterpret_cast<char*>(&username_len), sizeof(username_len));
-            string username(username_len,'\0');
-            indb_file.read(&username[0], username_len);
-
-            //3. READ PASSWORD
-            //READ STRING SIZE
-            size_t password_len = 0;
-            indb_file.read(reinterpret_cast<char*>(&password_len), sizeof(password_len));
-            string password(password_len,'\0');
-            indb_file.read(&password[0], password_len);
-
-            //4. READ AGE
-            int age = 0;
-            indb_file.read(reinterpret_cast<char*>(&age), sizeof(age));
-
-            if (my_id == id) {
-                user.setId(my_id);
-                user.setName(name);
-                user.setUsername(username);
-                user.setPassword(password);
-                user.setAge(age);
-
-                return user;
-            }
-        }
-        string str_error = "Data not found with id :";
-        str_error.append(to_string(my_id));
-        throw str_error;
+        return u;
     }
 
     T getDataByUsername(string my_username) override {
-        Users user;
-        ifstream indb_file(db_name, ios::binary);
-        if (!indb_file.is_open()) {
-            throw "Cannot open database file";
+         Users u = extractData('u', -1, my_username);
+        if (u.getName().empty()) {
+            string str_error = "Data not found with username :";
+            str_error.append(my_username);
+            throw str_error;
         }
-
-        //READ ID
-        int my_id = 0;
-        while (indb_file.read(reinterpret_cast<char*>(&my_id), sizeof(my_id))) {
-
-            //1. READ NAME
-            //READ STRING SIZE
-            size_t name_len = 0;
-            indb_file.read(reinterpret_cast<char*>(&name_len), sizeof(name_len));
-            string name(name_len,'\0');
-            indb_file.read(&name[0], name_len);
-
-            //2. READ USERNAME
-            //READ STRING SIZE
-            size_t username_len = 0;
-            indb_file.read(reinterpret_cast<char*>(&username_len), sizeof(username_len));
-            string username(username_len,'\0');
-            indb_file.read(&username[0], username_len);
-
-            //3. READ PASSWORD
-            //READ STRING SIZE
-            size_t password_len = 0;
-            indb_file.read(reinterpret_cast<char*>(&password_len), sizeof(password_len));
-            string password(password_len,'\0');
-            indb_file.read(&password[0], password_len);
-
-            //4. READ AGE
-            int age = 0;
-            indb_file.read(reinterpret_cast<char*>(&age), sizeof(age));
-
-            if (username == my_username) {
-                user.setId(my_id);
-                user.setName(name);
-                user.setUsername(username);
-                user.setPassword(password);
-                user.setAge(age);
-
-                return user;
-            }
-        }
-        string str_error = "Data not found with username :";
-        str_error.append(my_username);
-        throw str_error;
+        return u;
     }
 
     vector<T> getAll() override {
-        vector<Users> users;
+        extractData('a',-1,"");
+        return users;
+    }
+    T extractData(char operation,int id, string my_username) {
         Users user;
         ifstream indb_file(db_name, ios::binary);
         if (!indb_file.is_open()) {
@@ -284,25 +221,36 @@ public:
             user.setPassword(password);
             user.setAge(age);
 
-            users.push_back(user);
+            if (operation == 'i') {
+                if (my_id == id) {
+                    return user;
+                }
+            }
+            else if (operation == 'u') {
+                if (my_username == username) {
+                    return user;
+                }
+            }
+            else if (operation == 'a') {
+                users.push_back(user);
+            }
         }
-        return users;
+        return Users{};
     }
-
 };
 int main() {
     try {
         auto user = make_shared<Users>(
             2, "Trace Millie", "tracey", "tracey7@1", 15);
-        auto database = make_unique<Database<Users>>(user);
+        auto database = make_unique<Database<Users>>();
 
-        //database->addData(); // save user details to database
+        //database->addData(user); // save user details to database
 
-        //Users getUser = database->getDataByID(3);
-        //cout << getUser << endl;
+        Users getUser = database->getDataByID(1);
+        cout << getUser << endl;
 
-        vector<Users> users = database->getAll();
-        cout << users << endl;
+        //vector<Users> users = database->getAll();
+        //cout << users << endl;
     }
     catch (const char* exp) {
         cerr << "error: " << exp << endl;
